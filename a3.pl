@@ -2,6 +2,7 @@
 CMPUT 325 Winter 2019 Assignment 3
 CCID nbombard Student name Nicholas Bombardieri
 
+
 Question 1 alternate(+L1, +L2, ?L)
 L1 and L2 should take turns popping their first element into a list. Once one is [], put the rest of the elements into the list and return.
 */
@@ -77,6 +78,7 @@ Returns the prerequisites of C in L.
 %Base case: all prerequistes have been listed.
 req([], []).
 
+
 /*
 Main loop: Finds the list of all prerequisites of First. Recurses on that to get Firstreqlist.
 Then appends First to the end of Firstreqlist to get Newlist.
@@ -124,6 +126,7 @@ remove_a_from_b(A, [First|Rest], Inbandnotina):-
     remove_a_from_b(A, Rest, Restinbandnotina),
     append([First], Restinbandnotina, Inbandnotina).
 
+
 /*
 get_cantakes returns courses in possiblecantakes whose prerequisites are all in taken.
 */
@@ -146,6 +149,7 @@ get_cantakes(Taken, [First|Rest], Cantakelist) :-
     Unmetrequisites \== [],
     get_cantakes(Taken, Rest, Cantakelist).
 
+
 /*
 can_take gets all listed courses using findall and puts them in allcourses.
 It then removes taken courses from allcourses and saves the result in possiblecantakes.
@@ -164,11 +168,19 @@ can_take(Taken, Cantake) :-
 Question 4.3 in_cycle(+C, -Cycle)
 Given a course, return "C0, C1, C2, ... Cn, C0", where Ci is a prerequisited to C(i+1), and Cn is a prerequisite for C0.
 If no such cycle exists, return false.
-*/
 
-%get_network_call([Not_done], Tree, Newtree): Returns the entire tree of courses which are prerequisites to Not_done
+My solution works as follows: in_cycle calls get_network and compute_cycle.
+    get_network finds out if there exists a cycle with Course.
+    compute_cycle returns that cycle, provided that one exists.
+
+
+get_network_call(Not_done, Tree, Newtree): Finds all cascading prerequisites of courses in Not_done
+Note, it doesn't actually return a tree, that was just a convenient name for the network.
+*/
+%Basecase: Not_done = [], so no more courses to try. Return tree.
 get_network_call([], Tree, Tree).
 
+%Main loop: First is not in Tree. Add it to tree, add its prereqs to New_not_done, and recurse on New_not_done.
 get_network_call([First|Rest], Tree, Newtree) :-
     antimember(Tree, First), 
     findall(C, prerequisite(C, First), Firstpreds),
@@ -176,23 +188,36 @@ get_network_call([First|Rest], Tree, Newtree) :-
     append(Tree, [First], Mininewtree),
     get_network_call(New_not_done, Mininewtree, Newtree).
 
+%main loop: First is in Tree, recurse on Rest.
 get_network_call([First|Rest], Tree, Newtree) :-
     member(First, Tree),
     get_network_call(Rest, Tree, Newtree).
 
-%get_network: returns the entire tree of courses rooted at Course.
+
+/*
+get_network(Course, Tree): Gets prerequisites of Course and calls get_network_call on them.
+*/
+%Helper method for get_network_call. Instatiates stuff for it.
 get_network(Course, Tree) :-
     findall(C, prerequisite(C, Course), Coursepreds),
     get_network_call(Coursepreds, [], Tree).
 
-%compute_cycle_call
+
+/*
+compute_cycle_call(Not_done, Original, Currentcycle, Cycle): Finds the cycle of [Original, P1, P2, ..., Original] 
+ each element of the list is a prerequisite to the following element in the list.
+Only gets called if a cycle exists.
+*/
+%Basecase: Cycle is found and no more nodes need to be found. Returns the cycle.
 compute_cycle_call([], First, [First|Rest], [First|Rest]) :-
     Rest \== [].
 
+%Catch case: if First is Original, adds original to currentcycle and returns.
 compute_cycle_call([First|_], Original, Currentcycle, Cycle) :-
     First == Original,
     append([Original], Currentcycle, Cycle).
 
+%Main loop: First is not original and not in Currentcycle. Add it to currentcycle, append its prerequisites and Rest to New_not_done, and recurse.
 compute_cycle_call([First|Rest], Original, Currentcycle, Cycle) :-
     First \== Original,
     antimember(Currentcycle, First),
@@ -201,45 +226,26 @@ compute_cycle_call([First|Rest], Original, Currentcycle, Cycle) :-
     append([First], Currentcycle, Newcycle),
     compute_cycle_call(New_not_done, Original, Newcycle, Cycle).
 
+%Main loop: First is not original but is in currentcycle. Recurse on rest.
 compute_cycle_call([First|Rest], Original, Currentcycle, Cycle) :-
     First \== Original,
     member(First, Currentcycle),
     compute_cycle_call(Rest, Original, Currentcycle, Cycle).
 
 
-
-compute_cycle_call([First|Rest], Original, Currentcycle, Cycle) :-
-    First \== Original,
-    antimember(Currentcycle, First),
-    compute_cycle_call(Rest, Original, Currentcycle, Cycle).
-
-
-
-%compute_cycle
+/*
+compute_cycle(Course, Cycle): Helper function for compute_cycle_call. Gets all of Course's prerequisites and calls compute_cycle_call on them.
+*/
 compute_cycle(Course, Cycle) :-
     findall(C, prerequisite(C, Course), Coursepreds),
     compute_cycle_call(Coursepreds, Course, [Course], Cycle).
 
 
 /*
-%basecase:  originalcourse is a prereq to a course that is a prereq to it. Return originalcourse.
-get_cycle(Originalcourse, [First|_], Cyclesofar, Returnvalue) :-
-    Originalcourse == First,
-    append(Cyclesofar, [First], Returnvalue).
-
-get_cycle(Originalcourse, [First|_], Cyclesofar, Returnvalue) :-
-    antimember(Cyclesofar, First),
-    findall(C, prerequisite(First, C), Isprereqforlist),
-    append(Cyclesofar, First, Newcyclesofar),
-    get_cycle(Originalcourse, Isprereqforlist, Newcyclesofar, Returnvalue).
-
-get_cycle(Originalcourse, [First|Rest], Cyclesofar, Returnvalue) :-
-    Originalcourse \== First,
-    %member(First, Cyclesofar),
-    get_cycle(Originalcourse, Rest, Cyclesofar, Returnvalue).
+in_cycle(Course, Cycle): Returns false if no cycle from Course -> Course exists using predicates, of if one does exist, returns all such cycles.
+get_network finds out if there exists a cycle with Course.
+compute_cycle returns that cycle, provided that one exists.
 */
-    
-%in_cycle gets all of the classes that Course is a prerequisite for and calls get_cycle on that list.
 in_cycle(Course, Cycle) :- 
     get_network(Course, Tree),
     member(Course, Tree),
